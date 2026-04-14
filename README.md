@@ -1,60 +1,107 @@
-# AuthLib
+# auth-lib
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.0.
+Angular workspace for an authentication library (`projects/auth`) and a demo application shell.
 
-## Development server
+## Tech stack
 
-To start a local development server, run:
+- Angular 21
+- TypeScript 5.9
+- RxJS 7
+- ng-packagr (library packaging)
 
-```bash
-ng serve
-```
+## Workspace structure
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+- `projects/auth`: reusable auth library
+- `src`: demo/host Angular application
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Installation
 
 ```bash
-ng generate --help
+npm install
 ```
 
-## Building
-
-To build the project run:
+## Useful scripts
 
 ```bash
-ng build
+# Start demo application
+npm start
+
+# Build all configured projects
+npm run build
+
+# Build the auth library only
+ng build auth
+
+# Run tests
+npm test
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Auth library overview
 
-## Running unit tests
+Primary service: `Auth` in `projects/auth/src/lib/auth.ts`.
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Supported API methods:
+
+- `login`
+- `register`
+- `logout`
+- `forgotPassword`
+- `verifyResetCode`
+- `resetPassword`
+- `changePassword`
+- `deleteMyAccount`
+- `editProfile`
+
+The service uses endpoints defined in `AuthEndPoint` (`projects/auth/src/lib/enums/auth-endpoint.ts`) with this current base URL:
+
+`https://exam.elevateegy.com/api/v1/auth`
+
+## Clean Architecture (current approach)
+
+The library follows a lightweight layered style aligned with Clean Architecture ideas:
+
+- Contract layer: `AuthAPI` (`projects/auth/src/lib/base/auth-api.ts`) defines the use-case-facing interface.
+- Implementation layer: `Auth` (`projects/auth/src/lib/auth.ts`) implements the contract and orchestrates HTTP calls.
+- Mapping layer: `AuthApiAdaptor` (`projects/auth/src/lib/adaptor/auth-api-adaptor.ts`) transforms backend payloads into app-friendly shapes.
+- Boundary models: DTOs and response interfaces under `projects/auth/src/lib/interfaces` isolate transport details.
+
+This separation keeps application code less coupled to raw API payloads and easier to evolve.
+
+## Abstraction
+
+Abstraction is applied through the `AuthAPI` abstract class:
+
+- Consumers depend on auth behavior (`login`, `register`, etc.) instead of low-level HTTP details.
+- The concrete implementation (`Auth`) can change internally without forcing changes in consuming code.
+- Adaptors provide an additional abstraction boundary for response shape normalization.
+
+In practice, this supports testability and maintainability by reducing direct dependency on endpoint and payload specifics.
+
+## Library usage example
+
+```ts
+import { Injectable, inject } from '@angular/core';
+import { Auth } from 'auth';
+
+@Injectable({ providedIn: 'root' })
+export class AuthFacade {
+	private readonly auth = inject(Auth);
+
+	signIn(email: string, password: string) {
+		return this.auth.login({ email, password });
+	}
+}
+```
+
+## Build and publish the library
 
 ```bash
-ng test
+ng build auth
+cd dist/auth
+npm publish
 ```
 
-## Running end-to-end tests
+## Notes
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
-"# angular-auth-library" 
+- The library currently exports `Auth` via `projects/auth/src/public-api.ts`.
+- Ensure `HttpClient` is available in the consuming app configuration.
